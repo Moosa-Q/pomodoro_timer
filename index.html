@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pomodoro Timer</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #222;
+      color: #f5a623;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+    }
+
+    .timer-container {
+      position: relative;
+      width: 300px;
+      height: 50px;
+      background-color: #8B4513;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .progress-bar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: #DEB887;
+      transform: scaleX(0);
+      transform-origin: left;
+      transition: transform 0.2s linear;
+    }
+
+    .time-display {
+      position: fixed;
+      top: 10px;
+      right: 20px;
+      font-size: 1.5rem;
+      color: #f5a623;
+    }
+
+    .controls {
+      margin-top: 20px;
+    }
+
+    button, input {
+      background-color: #f5a623;
+      color: #222;
+      border: none;
+      padding: 10px;
+      font-size: 1rem;
+      margin: 5px;
+    }
+
+    input {
+      width: 80px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Pomodoro Timer</h1>
+
+  <div class="timer-container">
+    <div class="progress-bar" id="progressBar"></div>
+  </div>
+
+  <div class="time-display" id="timeDisplay">00:00</div>
+
+  <div class="controls">
+    <input type="number" id="minutes" placeholder="Min" min="0">
+    <input type="number" id="seconds" placeholder="Sec" min="0" max="59">
+    <button onclick="startPomodoro()">Start</button>
+    <button onclick="togglePause()" id="pauseResumeButton" disabled>Pause</button>
+    <button onclick="resetPomodoro()">Reset</button>
+  </div>
+
+  <!-- Audio for the alert -->
+  <audio id="alarmSound" src="veryloudairhorn.mp3" preload="auto"></audio>
+
+  <script>
+    let interval;
+    let endTime;
+    let paused = false;
+    let remainingTime;
+
+    function startPomodoro() {
+      const minutes = parseInt(document.getElementById("minutes").value) || 0;
+      const seconds = parseInt(document.getElementById("seconds").value) || 0;
+      const totalTime = (minutes * 60) + seconds;
+
+      if (totalTime > 0) {
+        clearInterval(interval);
+        endTime = Date.now() + totalTime * 1000;
+        remainingTime = totalTime;
+        localStorage.setItem("pomodoroEndTime", endTime);
+
+        document.getElementById("pauseResumeButton").disabled = false;
+        document.getElementById("pauseResumeButton").innerText = "Pause";
+
+        interval = setInterval(() => updateTimer(totalTime), 1000);
+      } else {
+        alert("Please set a time greater than 0.");
+      }
+    }
+
+    function togglePause() {
+      if (paused) {
+        resumePomodoro();
+      } else {
+        pausePomodoro();
+      }
+    }
+
+    function pausePomodoro() {
+      clearInterval(interval);
+      paused = true;
+      remainingTime = Math.floor((endTime - Date.now()) / 1000);
+      document.getElementById("pauseResumeButton").innerText = "Resume";
+    }
+
+    function resumePomodoro() {
+      endTime = Date.now() + remainingTime * 1000;
+      interval = setInterval(() => updateTimer(remainingTime), 1000);
+      paused = false;
+      document.getElementById("pauseResumeButton").innerText = "Pause";
+    }
+
+    function resetPomodoro() {
+      clearInterval(interval);
+      endTime = null;
+      paused = false;
+      localStorage.removeItem("pomodoroEndTime");
+      document.getElementById("pauseResumeButton").disabled = true;
+      document.getElementById("pauseResumeButton").innerText = "Pause";
+      document.title = "Pomodoro Timer";
+      updateDisplay(0);
+      updateProgress(0);
+    }
+
+    function updateTimer(totalTime) {
+      const remaining = Math.floor((endTime - Date.now()) / 1000);
+      if (remaining <= 0) {
+        clearInterval(interval);
+        playAlarm();
+        alert("Study session's over! Take a break!");
+        resetPomodoro();
+      } else {
+        updateDisplay(remaining);
+        updateProgress(remaining, totalTime);
+      }
+    }
+
+    function updateDisplay(time) {
+      const minutes = Math.floor(time / 60).toString().padStart(2, '0');
+      const seconds = (time % 60).toString().padStart(2, '0');
+      const timeString = `${minutes}:${seconds}`;
+      document.getElementById("timeDisplay").innerText = timeString;
+      document.title = timeString;
+    }
+
+    function updateProgress(remainingTime, totalTime) {
+      const progress = 1 - (remainingTime / totalTime);
+      document.getElementById("progressBar").style.transform = `scaleX(${progress})`;
+    }
+
+    function playAlarm() {
+      const alarmSound = document.getElementById("alarmSound");
+      alarmSound.play();
+    }
+
+    window.onload = () => {
+      const savedEndTime = localStorage.getItem("pomodoroEndTime");
+      if (savedEndTime) {
+        endTime = parseInt(savedEndTime);
+        const remaining = Math.floor((endTime - Date.now()) / 1000);
+        if (remaining > 0) {
+          interval = setInterval(() => updateTimer(remaining), 1000);
+        } else {
+          localStorage.removeItem("pomodoroEndTime");
+        }
+      }
+    };
+  </script>
+
+</body>
+</html>
